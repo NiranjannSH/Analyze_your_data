@@ -30,7 +30,7 @@ if uploaded_file is not None:
     # Strip whitespaces from column names
     data.columns = data.columns.str.strip()
 
-    # Drop rows with any NaN values (skip missing data)
+    # Drop rows with any NaN values in features or target
     data = data.dropna()
 
     # Display the data
@@ -67,6 +67,10 @@ if uploaded_file is not None:
         # Split data into features and target
         X = data.drop(target_column, axis=1)
         y = data[target_column]
+
+        # Drop any rows where the target column has NaN values
+        X = X[~y.isna()]
+        y = y.dropna()
 
         # Convert all column names to strings (just in case they contain non-string types)
         X.columns = X.columns.astype(str)
