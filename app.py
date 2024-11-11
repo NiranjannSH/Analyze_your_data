@@ -19,7 +19,7 @@ st.title("Classification Analysis App")
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
 # Function to read the dataset in chunks and process
-def load_large_csv(file, chunk_size=10000):
+def load_large_csv(file, chunk_size=1000):
     chunks = pd.read_csv(file, chunksize=chunk_size)
     data = pd.concat(chunks, ignore_index=True)
     return data
