@@ -38,15 +38,16 @@ if uploaded_file is not None:
     # Sidebar options to select the target column
     target_column = st.sidebar.selectbox("Select Target Column", data.columns)
 
-    # Handle categorical variables using one-hot encoding
+# Handle categorical variables using one-hot encoding
     categorical_columns = data.select_dtypes(include=['object']).columns
     if not categorical_columns.empty:
         st.warning("One-Hot Encoding applied to handle categorical variables.")
-        encoder = OneHotEncoder(drop='first', sparse=False)
+        encoder = OneHotEncoder(drop='first', sparse_output=False)  # Updated line
         data_encoded = pd.DataFrame(encoder.fit_transform(data[categorical_columns]))
         data_encoded.columns = encoder.get_feature_names_out(categorical_columns)
-        # Concatenate the original and one-hot encoded columns without dropping
         data = pd.concat([data, data_encoded], axis=1)
+        data = data.drop(categorical_columns, axis=1)
+
 
     # Handle KeyError for dropping the target column
     try:
