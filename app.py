@@ -91,7 +91,7 @@ if uploaded_file is not None:
         classifiers = {
             "Random Forest": RandomForestClassifier(),
             "Gradient Boosting": GradientBoostingClassifier(),
-            "AdaBoost": AdaBoostClassifier(),
+            "AdaBoost": AdaBoostClassifier(algorithm='SAMME'),
             "SVM": SVC(),
             "K-Nearest Neighbors": KNeighborsClassifier(),
             "Logistic Regression": LogisticRegression(),
