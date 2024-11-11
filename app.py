@@ -36,18 +36,19 @@ if uploaded_file is not None:
     st.write(data.describe())
 
     # Sidebar options to select the target column
-    target_column = st.sidebar.selectbox("Select Target Column", data.columns)
+    target_column = st.sidebar.selectbox("Select Target Column", [""] + list(data.columns), index=0)
 
-    # Check if the user has selected a target column
-    if target_column:
+    # Proceed only if a valid target column is selected
+    if target_column and target_column != "":
         # Handle categorical variables using one-hot encoding
         categorical_columns = data.select_dtypes(include=['object']).columns
         if not categorical_columns.empty:
             st.warning("One-Hot Encoding applied to handle categorical variables.")
-            encoder = OneHotEncoder(drop='first', sparse_output=False)  # Updated line
+            encoder = OneHotEncoder(drop='first', sparse_output=False)
             data_encoded = pd.DataFrame(encoder.fit_transform(data[categorical_columns]))
             data_encoded.columns = encoder.get_feature_names_out(categorical_columns)
             data = pd.concat([data, data_encoded], axis=1)
+            data = data.drop(categorical_columns, axis=1)  # Drop original categorical columns
 
         # Split data into features and target
         X = data.drop(target_column, axis=1)
@@ -119,3 +120,5 @@ if uploaded_file is not None:
         # Button to download results as a text file
         if st.download_button("Download Results as Text", result_text, key="download_button"):
             st.success("Results downloaded successfully!")
+    else:
+        st.info("Please select a target column from the sidebar to proceed.")
