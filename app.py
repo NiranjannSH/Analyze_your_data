@@ -9,6 +9,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.impute import SimpleImputer
 import numpy as np
 
 # Streamlit app
@@ -72,7 +73,12 @@ if uploaded_file is not None:
         X = X[~y.isna()]
         y = y.dropna()
 
+        # Impute missing values in features using the median strategy
+        imputer = SimpleImputer(strategy='median')
+        X = imputer.fit_transform(X)
+
         # Convert all column names to strings (just in case they contain non-string types)
+        X = pd.DataFrame(X)
         X.columns = X.columns.astype(str)
 
         # Train-test split
