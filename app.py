@@ -63,10 +63,15 @@ if uploaded_file is not None:
     target_column = auto_select_target_column(data)
     
     if target_column is None:
-        st.error("Unable to automatically select a target column. Please manually select one from the sidebar.")
+        st.error("Unable to automatically select a target column. Please manually select one.")
     else:
-        st.sidebar.write(f"Automatically selected target column: {target_column}")
+        # Display the automatically selected target column after the description
+        st.subheader("Automatically Selected Target Column")
+        st.write(f"The target column has been automatically selected as: **{target_column}**")
         
+        # Option for the user to change the target column
+        target_column = st.selectbox("Change Target Column", [""] + list(data.columns), index=data.columns.get_loc(target_column))
+
         # Handle categorical variables using one-hot encoding
         categorical_columns = data.select_dtypes(include=['object']).columns
         if not categorical_columns.empty:
