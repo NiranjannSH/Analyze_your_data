@@ -11,7 +11,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 # Streamlit app
-st.title("ClassifyPro Data Analysis App")
+st.title("Classification Analysis App")
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
@@ -48,7 +48,7 @@ if uploaded_file is not None:
             data_encoded = pd.DataFrame(encoder.fit_transform(data[categorical_columns]))
             data_encoded.columns = encoder.get_feature_names_out(categorical_columns)
             data = pd.concat([data, data_encoded], axis=1)
-            
+            #data = data.drop(categorical_columns, axis=1)  # Drop original categorical columns
 
         # Split data into features and target
         X = data.drop(target_column, axis=1)
