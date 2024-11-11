@@ -23,23 +23,6 @@ def load_large_csv(file, chunk_size=10000):
     data = pd.concat(chunks, ignore_index=True)
     return data
 
-# Function to automatically select the target column
-def auto_select_target_column(data):
-    # First, check for categorical columns (they often represent the target variable)
-    categorical_columns = data.select_dtypes(include=['object']).columns
-    
-    if categorical_columns.empty:
-        # If no categorical columns, fall back to numeric columns
-        numeric_columns = data.select_dtypes(include=[np.number]).columns
-        if numeric_columns.empty:
-            return None  # No suitable target column
-        else:
-            # Choose the numeric column with the fewest unique values
-            return numeric_columns[data[numeric_columns].nunique().argmin()]
-    
-    # If we have categorical columns, choose the one with the fewest unique values (for classification)
-    return categorical_columns[data[categorical_columns].nunique().argmin()]
-
 if uploaded_file is not None:
     # Read and process the large CSV file
     data = load_large_csv(uploaded_file)
@@ -59,33 +42,22 @@ if uploaded_file is not None:
     st.subheader("Data Description")
     st.write(data.describe())
 
-    # Automatically select the target column
-    target_column = auto_select_target_column(data)
-    
-    if target_column is None:
-        st.error("Unable to automatically select a target column. Please manually select one.")
-    else:
-        # Display the automatically selected target column after the description
-        st.subheader("Automatically Selected Target Column")
-        st.write(f"The target column has been automatically selected as: **{target_column}**")
-        
-        # Option for the user to change the target column
-        target_column = st.selectbox("Change Target Column", [""] + list(data.columns), index=data.columns.get_loc(target_column))
+    # Handle categorical variables using one-hot encoding
+    categorical_columns = data.select_dtypes(include=['object']).columns
+    if not categorical_columns.empty:
+        st.warning("One-Hot Encoding applied to handle categorical variables.")
+        encoder = OneHotEncoder(drop='first', sparse_output=False)
+        data_encoded = pd.DataFrame(encoder.fit_transform(data[categorical_columns]))
+        data_encoded.columns = encoder.get_feature_names_out(categorical_columns)
+        data = pd.concat([data, data_encoded], axis=1)
+        # Drop the original categorical columns
+        data = data.drop(categorical_columns, axis=1)
 
-        # Handle categorical variables using one-hot encoding
-        categorical_columns = data.select_dtypes(include=['object']).columns
-        if not categorical_columns.empty:
-            st.warning("One-Hot Encoding applied to handle categorical variables.")
-            encoder = OneHotEncoder(drop='first', sparse_output=False)
-            data_encoded = pd.DataFrame(encoder.fit_transform(data[categorical_columns]))
-            data_encoded.columns = encoder.get_feature_names_out(categorical_columns)
-            data = pd.concat([data, data_encoded], axis=1)
-            # Drop the original categorical columns data = data.drop(categorical_columns, axis=1)
+    # Request user to select the target column
+    target_column = st.selectbox("Select Target Column", [""] + list(data.columns), index=0)
 
-        # Optimize data types to reduce memory usage
-        data = data.apply(pd.to_numeric, errors='ignore')  # Convert columns to numeric types where possible
-        data = data.convert_dtypes()  # Convert columns to appropriate types
-
+    # Proceed only if a valid target column is selected
+    if target_column and target_column != "":
         # Split data into features and target
         X = data.drop(target_column, axis=1)
         y = data[target_column]
@@ -156,3 +128,5 @@ if uploaded_file is not None:
         # Button to download results as a text file
         if st.download_button("Download Results as Text", result_text, key="download_button"):
             st.success("Results downloaded successfully!")
+    else:
+        st.info("Please select a target column from the dropdown to proceed.")
