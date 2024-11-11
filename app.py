@@ -49,8 +49,12 @@ if uploaded_file is not None:
         encoder = OneHotEncoder(drop='first', sparse_output=False)
         data_encoded = pd.DataFrame(encoder.fit_transform(data[categorical_columns]))
         data_encoded.columns = encoder.get_feature_names_out(categorical_columns)
+        
+        # Concatenate encoded columns back to the original data
         data = pd.concat([data, data_encoded], axis=1)
-        # Drop the original categorical columnsm data = data.drop(categorical_columns, axis=1)
+        
+        # Drop the original categorical columns
+        data = data.drop(categorical_columns, axis=1)
 
     # Request user to select the target column
     target_column = st.selectbox("Select Target Column", [""] + list(data.columns), index=0)
