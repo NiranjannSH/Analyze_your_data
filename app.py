@@ -9,6 +9,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import accuracy_score, confusion_matrix
+import numpy as np
 
 # Streamlit app
 st.title("Classification Analysis App")
@@ -16,16 +17,39 @@ st.title("Classification Analysis App")
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
 
+# Function to read the dataset in chunks and process
+def load_large_csv(file, chunk_size=10000):
+    chunks = pd.read_csv(file, chunksize=chunk_size)
+    data = pd.concat(chunks, ignore_index=True)
+    return data
+
+# Function to automatically select the target column
+def auto_select_target_column(data):
+    # First, check for categorical columns (they often represent the target variable)
+    categorical_columns = data.select_dtypes(include=['object']).columns
+    
+    if categorical_columns.empty:
+        # If no categorical columns, fall back to numeric columns
+        numeric_columns = data.select_dtypes(include=[np.number]).columns
+        if numeric_columns.empty:
+            return None  # No suitable target column
+        else:
+            # Choose the numeric column with the fewest unique values
+            return numeric_columns[data[numeric_columns].nunique().argmin()]
+    
+    # If we have categorical columns, choose the one with the fewest unique values (for classification)
+    return categorical_columns[data[categorical_columns].nunique().argmin()]
+
 if uploaded_file is not None:
-    # Read data
-    data = pd.read_csv(uploaded_file)
+    # Read and process the large CSV file
+    data = load_large_csv(uploaded_file)
+
+    # Strip whitespaces from column names
+    data.columns = data.columns.str.strip()
 
     # Display the data
     st.subheader("CSV Data")
     st.write(data)
-
-    # Strip whitespaces from column names
-    data.columns = data.columns.str.strip()
 
     # Display available columns
     st.subheader("Data Columns")
@@ -35,11 +59,14 @@ if uploaded_file is not None:
     st.subheader("Data Description")
     st.write(data.describe())
 
-    # Sidebar options to select the target column
-    target_column = st.sidebar.selectbox("Select Target Column", [""] + list(data.columns), index=0)
-
-    # Proceed only if a valid target column is selected
-    if target_column and target_column != "":
+    # Automatically select the target column
+    target_column = auto_select_target_column(data)
+    
+    if target_column is None:
+        st.error("Unable to automatically select a target column. Please manually select one from the sidebar.")
+    else:
+        st.sidebar.write(f"Automatically selected target column: {target_column}")
+        
         # Handle categorical variables using one-hot encoding
         categorical_columns = data.select_dtypes(include=['object']).columns
         if not categorical_columns.empty:
@@ -48,7 +75,11 @@ if uploaded_file is not None:
             data_encoded = pd.DataFrame(encoder.fit_transform(data[categorical_columns]))
             data_encoded.columns = encoder.get_feature_names_out(categorical_columns)
             data = pd.concat([data, data_encoded], axis=1)
-            #data = data.drop(categorical_columns, axis=1)  # Drop original categorical columns
+            # Drop the original categorical columns data = data.drop(categorical_columns, axis=1)
+
+        # Optimize data types to reduce memory usage
+        data = data.apply(pd.to_numeric, errors='ignore')  # Convert columns to numeric types where possible
+        data = data.convert_dtypes()  # Convert columns to appropriate types
 
         # Split data into features and target
         X = data.drop(target_column, axis=1)
@@ -67,7 +98,7 @@ if uploaded_file is not None:
         classifiers = {
             "Random Forest": RandomForestClassifier(),
             "Gradient Boosting": GradientBoostingClassifier(),
-            "AdaBoost": AdaBoostClassifier(algorithm='SAMME'),
+            "AdaBoost": AdaBoostClassifier(),
             "SVM": SVC(),
             "K-Nearest Neighbors": KNeighborsClassifier(),
             "Logistic Regression": LogisticRegression(),
@@ -120,5 +151,3 @@ if uploaded_file is not None:
         # Button to download results as a text file
         if st.download_button("Download Results as Text", result_text, key="download_button"):
             st.success("Results downloaded successfully!")
-    else:
-        st.info("Please select a target column from the sidebar to proceed.")
