@@ -46,7 +46,7 @@ if uploaded_file is not None:
         data_encoded = pd.DataFrame(encoder.fit_transform(data[categorical_columns]))
         data_encoded.columns = encoder.get_feature_names_out(categorical_columns)
         data = pd.concat([data, data_encoded], axis=1)
-        data = data.drop(categorical_columns, axis=1)
+        
 
 
     # Handle KeyError for dropping the target column
