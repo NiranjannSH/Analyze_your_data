@@ -23,35 +23,18 @@ def load_large_csv(file, chunk_size=10000):
     data = pd.concat(chunks, ignore_index=True)
     return data
 
-def handle_noisy_data(data):
-    # 1. Strip whitespaces from column names and values
-    data.columns = data.columns.str.strip()
-    data = data.applymap(lambda x: x.strip() if isinstance(x, str) else x)
-    
-    # 2. Handle missing values (impute with median for numeric columns and mode for categorical columns)
-    for column in data.columns:
-        if data[column].dtype == 'object':  # Categorical column
-            data[column].fillna(data[column].mode()[0], inplace=True)
-        else:  # Numeric column
-            data[column].fillna(data[column].median(), inplace=True)
-    
-    # 3. Convert any remaining non-numeric values to numeric (coerce errors)
-    data = data.apply(pd.to_numeric, errors='coerce')
-    
-    # 4. Drop rows with any remaining NaN values (in case any column could not be converted)
-    data = data.dropna()
-    
-    return data
-
 if uploaded_file is not None:
     # Read and process the large CSV file
     data = load_large_csv(uploaded_file)
 
-    # Handle noisy data
-    data = handle_noisy_data(data)
+    # Strip whitespaces from column names
+    data.columns = data.columns.str.strip()
 
-    # Display the cleaned data
-    st.subheader("Cleaned CSV Data")
+    # Drop rows with any NaN values (skip missing data)
+    data = data.dropna()
+
+    # Display the data
+    st.subheader("CSV Data")
     st.write(data)
 
     # Display available columns
