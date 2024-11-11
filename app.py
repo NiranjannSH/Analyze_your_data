@@ -11,7 +11,7 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.metrics import accuracy_score, confusion_matrix
 
 # Streamlit app
-st.title("Classification Analysis App")
+st.title("ClassifyPro Data Analysis App")
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
