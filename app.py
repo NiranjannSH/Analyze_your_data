@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.svm import SVC
@@ -12,7 +12,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix
 import numpy as np
 
 # Streamlit app
-st.title("Classification Analysis App")
+st.title("Classification Analysis App with Randomized Hyperparameter Search")
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
@@ -44,6 +44,31 @@ if uploaded_file is not None:
             st.subheader("CSV Data")
             st.write(data)
 
+            # Additional dataset checks
+            st.subheader("Dataset Appropriateness Check")
+
+            # Check for missing values
+            missing_values = data.isnull().sum()
+            if missing_values.any():
+                st.warning("The dataset contains missing values.")
+                st.write(missing_values)
+            else:
+                st.success("No missing values detected.")
+
+            # Check for duplicate rows
+            duplicate_rows = data.duplicated().sum()
+            if duplicate_rows > 0:
+                st.warning(f"The dataset contains {duplicate_rows} duplicate rows.")
+                if st.button("Remove Duplicates"):
+                    data = data.drop_duplicates()
+                    st.success("Duplicate rows removed.")
+            else:
+                st.success("No duplicate rows detected.")
+
+            # Display data types
+            st.subheader("Data Types")
+            st.write(data.dtypes)
+
             # Display available columns
             st.subheader("Data Columns")
             st.write("Available columns:", data.columns)
@@ -69,6 +94,20 @@ if uploaded_file is not None:
             # Request user to select the target column
             target_column = st.selectbox("Select Target Column", [""] + list(data.columns), index=0)
 
+            # Check for imbalanced target column
+            if target_column and target_column != "":
+                target_counts = data[target_column].value_counts()
+                st.subheader("Target Class Distribution")
+                st.bar_chart(target_counts)
+
+                # Check for class imbalance
+                imbalance_threshold = 0.1  # Adjust this threshold as needed
+                class_ratios = target_counts / target_counts.sum()
+                if class_ratios.min() < imbalance_threshold:
+                    st.warning(f"The target column is imbalanced. Consider addressing this during model training.")
+                else:
+                    st.success("The target column has a balanced distribution.")
+
             # Proceed only if a valid target column is selected
             if target_column and target_column != "":
                 # Split data into features and target
@@ -84,16 +123,35 @@ if uploaded_file is not None:
                 # Classification
                 st.header("Classification Analysis")
 
-                # Define classifiers
+                # Define classifiers with hyperparameter grids
                 classifiers = {
-                    "Random Forest": RandomForestClassifier(),
-                    "Gradient Boosting": GradientBoostingClassifier(),
-                    "AdaBoost": AdaBoostClassifier(),
-                    "SVM": SVC(),
-                    "K-Nearest Neighbors": KNeighborsClassifier(),
-                    "Logistic Regression": LogisticRegression(),
-                    "Decision Tree": DecisionTreeClassifier(),
-                    "Naive Bayes": GaussianNB(),
+                    "Random Forest": (RandomForestClassifier(), {
+                        'n_estimators': [50, 100, 200],
+                        'max_depth': [None, 10, 20, 30]
+                    }),
+                    "Gradient Boosting": (GradientBoostingClassifier(), {
+                        'n_estimators': [50, 100, 200],
+                        'learning_rate': [0.01, 0.1, 1.0]
+                    }),
+                    "AdaBoost": (AdaBoostClassifier(), {
+                        'n_estimators': [50, 100, 200],
+                        'learning_rate': [0.01, 0.1, 1.0]
+                    }),
+                    "SVM": (SVC(), {
+                        'C': [0.1, 1, 10],
+                        'kernel': ['linear', 'rbf']
+                    }),
+                    "K-Nearest Neighbors": (KNeighborsClassifier(), {
+                        'n_neighbors': [3, 5, 7]
+                    }),
+                    "Logistic Regression": (LogisticRegression(), {
+                        'C': [0.1, 1, 10],
+                        'solver': ['liblinear', 'lbfgs']
+                    }),
+                    "Decision Tree": (DecisionTreeClassifier(), {
+                        'max_depth': [None, 10, 20, 30]
+                    }),
+                    "Naive Bayes": (GaussianNB(), {})
                 }
 
                 # Display accuracy for each classifier in a descending order
@@ -101,7 +159,12 @@ if uploaded_file is not None:
 
                 # Calculate and store accuracies
                 accuracies = {}
-                for clf_name, clf in classifiers.items():
+                for clf_name, (clf, param_grid) in classifiers.items():
+                    if param_grid:  # Perform RandomizedSearchCV if param_grid is not empty
+                        randomized_search = RandomizedSearchCV(clf, param_grid, n_iter=5, cv=3, random_state=42, n_jobs=-1)
+                        randomized_search.fit(X_train, y_train)
+                        clf = randomized_search.best_estimator_
+
                     clf.fit(X_train, y_train)
                     y_pred = clf.predict(X_test)
                     accuracy = accuracy_score(y_test, y_pred)
@@ -118,7 +181,7 @@ if uploaded_file is not None:
                 # Display confusion matrix for top 5 classifiers
                 st.subheader("Confusion Matrix for Top 5 Classifiers")
                 for clf_name, _ in top_10_classifiers[:5]:
-                    clf = classifiers[clf_name]
+                    clf = classifiers[clf_name][0]  # Use classifier without hyperparameter tuning
                     clf.fit(X_train, y_train)
                     y_pred = clf.predict(X_test)
                     confusion_mat = confusion_matrix(y_test, y_pred)
